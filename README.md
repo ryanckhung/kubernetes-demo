@@ -9,8 +9,8 @@ create pods with nginx
 
 Check Pods Details
 > kubectl get pods
-> kubectl get pods -o wide
-> kubectl describe pod <pod-name>
+/ kubectl get pods -o wide
+/ kubectl describe pod <pod-name>
   
 delete pods
 > kubectl delete pod <pod-name>
@@ -21,4 +21,4 @@ Update the pod-definition file and use 'kubectl apply' command or use 'kubectl e
   
 Get Number of Nodes
 > kubectl get nodes
-> kubectl get nodes -o wide (show more details)
+/ kubectl get nodes -o wide (show more details)
