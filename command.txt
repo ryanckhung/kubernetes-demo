@@ -32,6 +32,20 @@ Delete ReplicaSet
 Edit ReplicaSet
 > kubectl edit replicaset <replica-set-name>
 
+Check Deployment
+> kubectl get deployment
 
-Apply a YAML file
+Service
+> kubectl get service
+> kubectl describe service <service-name>
+Create a service yaml file with name simple-webapp-deployment, with name web-service then map the port
+> kubectl expose deployment simple-webapp-deployment --name=web-service --target-port=8080 --type=NodePort --port=8080 --dry-run=client -o yaml > svc.yaml
+
+The following create a deployment with the name httpd-frontend, with image=httpd:2.4-alpine
+then set the replicaset as 3
+> kubectl create deployment httpd-frontend --image=httpd:2.4-alpine
+> kubectl scale deployment --replicas=3 httpd-frontend
+
+
+Apply a YAML file (this will create/update the config)
 > kubectl apply -f <yaml file name>
