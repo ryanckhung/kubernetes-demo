@@ -4,7 +4,7 @@ create pods with nginx
 > kubectl run nginx --image=nginx
 
 Check Pods Details
-> kubectl get pods
+> kubectl get pods (kubectl get pod)
 > kubectl get pods -o wide
 > kubectl describe pod <pod-name>
   
@@ -15,6 +15,23 @@ Update Pods
 Update the pod-definition file and use 'kubectl apply' command or use 'kubectl edit pod <pod-name>' command.
   
   
+
 Get Number of Nodes
 > kubectl get nodes
 > kubectl get nodes -o wide (show more details)
+
+
+Check ReplicaSet
+> kubectl get replicaset
+> kubectl describe replicaset <replicaset-name>
+> kubectl describe pods (use to check error on creating the replicaset)
+
+Delete ReplicaSet
+> kubectl delete replicaset <replicaset-name>
+
+Edit ReplicaSet
+> kubectl edit replicaset <replica-set-name>
+
+
+Apply a YAML file
+> kubectl apply -f <yaml file name>
