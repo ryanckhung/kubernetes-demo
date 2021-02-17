@@ -49,3 +49,7 @@ then set the replicaset as 3
 
 Apply a YAML file (this will create/update the config)
 > kubectl apply -f <yaml file name>
+
+
+Show both of the pod and service together
+> kubectl get pods, svc
