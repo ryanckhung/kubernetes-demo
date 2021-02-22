@@ -53,3 +53,7 @@ Apply a YAML file (this will create/update the config)
 
 Show both of the pod and service together
 > kubectl get pods, svc
+
+to kick up the system, you can
+1. run individual pod files + individual service files
+2. run individual deployment files + individual service files
