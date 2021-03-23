@@ -5,6 +5,9 @@ Start the minikube for local
 > minikube delete
 > minikube status
 > minikube start --driver=virtualbox
+after the minikube is started, you can call the dashboard by
+> minikube dashboard
+
 
 check all the existing pods, services, replicaset, deployment
 > kubectl get all
