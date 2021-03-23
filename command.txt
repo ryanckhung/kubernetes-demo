@@ -51,13 +51,6 @@ Scale
 > kubectl scale --replicas=6 replicaset myapp-replicaset
 
 
-Service
-> kubectl get service
-> kubectl describe service <service-name>
-Create a service yaml file with name simple-webapp-deployment, with name web-service then map the port
-> kubectl expose deployment simple-webapp-deployment --name=web-service --target-port=8080 --type=NodePort --port=8080 --dry-run=client -o yaml > svc.yaml
-
-
 Deployment
 > kubectl create -f deployment-definition.yml
 > kubectl get deployments
@@ -93,7 +86,7 @@ after the above command, you can use the "> kubectl rollout history deployment/<
 or you can use "> kubectl rollout undo deployment/<name>" to roll back to the previous version
 
 
-Summary
+Check point Summary
 Create:
 > kubectl create -f deployment-definition.yml
 Get:
@@ -106,6 +99,17 @@ Status:
 > kubectl rollout history deployment/myapp-deployment
 Rollback:
 > kubectl rollout undo deployment/myapp-deployment
+
+
+
+Service
+> kubectl get service
+> kubectl describe service <service-name>
+Create a service yaml file with name simple-webapp-deployment, with name web-service then map the port
+> kubectl expose deployment simple-webapp-deployment --name=web-service --target-port=8080 --type=NodePort --port=8080 --dry-run=client -o yaml > svc.yaml
+
+
+
 
 
 Show both of the pod and service together
