@@ -33,6 +33,22 @@ Get Number of Nodes
 Check ReplicaSet
 > kubectl get replicaset
 > kubectl describe replicaset <replicaset-name>
+
+
+Summary
+Create:
+> kubectl create -f deployment-definition.yml
+Get:
+> kubectl get deployments
+Update:
+> kubectl apply -f deployment-definition.yml
+> kubectl set image deployment/myapp-deployment nginx=nginx:1.9.1
+Status:
+> kubectl rollout status deployment/myapp-deployment
+> kubectl rollout history deployment/myapp-deployment
+Rollback:
+> kubectl rollout undo deployment/myapp-deployment
+
 > kubectl describe pods (use to check error on creating the replicaset)
 
 Delete ReplicaSet
