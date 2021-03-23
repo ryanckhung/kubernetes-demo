@@ -82,6 +82,7 @@ Apply a YAML file (this will create/update the config)
 assume you have a deployment with name "myapp-deployment" and you want to update the nginx image version from 1.7.1 to 1.9.1
 > kubectl set image deployment/my-app-deployment nginx=nginx:1.9.1
 after the above command, you can use the "> kubectl rollout history deployment/<name>" to check the rollout status (about the deployment)
+or you can use "> kubectl rollout undo deployment/<name>" to roll back to the previous version
 
 
 Show both of the pod and service together
