@@ -33,22 +33,6 @@ Get Number of Nodes
 Check ReplicaSet
 > kubectl get replicaset
 > kubectl describe replicaset <replicaset-name>
-
-
-Summary
-Create:
-> kubectl create -f deployment-definition.yml
-Get:
-> kubectl get deployments
-Update:
-> kubectl apply -f deployment-definition.yml
-> kubectl set image deployment/myapp-deployment nginx=nginx:1.9.1
-Status:
-> kubectl rollout status deployment/myapp-deployment
-> kubectl rollout history deployment/myapp-deployment
-Rollback:
-> kubectl rollout undo deployment/myapp-deployment
-
 > kubectl describe pods (use to check error on creating the replicaset)
 
 Delete ReplicaSet
@@ -99,6 +83,21 @@ assume you have a deployment with name "myapp-deployment" and you want to update
 > kubectl set image deployment/my-app-deployment nginx=nginx:1.9.1
 after the above command, you can use the "> kubectl rollout history deployment/<name>" to check the rollout status (about the deployment)
 or you can use "> kubectl rollout undo deployment/<name>" to roll back to the previous version
+
+
+Summary
+Create:
+> kubectl create -f deployment-definition.yml
+Get:
+> kubectl get deployments
+Update:
+> kubectl apply -f deployment-definition.yml
+> kubectl set image deployment/myapp-deployment nginx=nginx:1.9.1
+Status:
+> kubectl rollout status deployment/myapp-deployment
+> kubectl rollout history deployment/myapp-deployment
+Rollback:
+> kubectl rollout undo deployment/myapp-deployment
 
 
 Show both of the pod and service together
