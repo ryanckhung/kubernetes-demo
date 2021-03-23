@@ -108,7 +108,7 @@ you can get the IP address of the kubernetes node by: (the internal private addr
 
 Service Type:
 NodePort: service makes an internal POD accessible on a Port on the Node (use to listen to a port on the Node and forward reques on that port to a port on the POD running the web appliation.)
-ClusterIP: the service creates a virtual IP inside the cluster to enable communication between different services such as a set of front-end servers to a set of backend servers.
+ClusterIP: the service creates a virtual IP inside the cluster to enable communication between different services such as a set of front-end servers to a set of backend servers.(group PODs together and provide a single interface to access the PODs in a group. eg. group of backend pods; the requests are forwarded to one of the PODs under the service randomly)
 LoadBalancer: load balancer for the services
 
 create a service yaml file, use selector and label to connect the pod (detail refer to the example in /Service)
