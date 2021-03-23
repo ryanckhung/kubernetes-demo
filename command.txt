@@ -6,7 +6,7 @@ Start the minikube for local
 > minikube status
 > minikube start --driver=virtualbox
 
-check all the existing pods, services, deployment
+check all the existing pods, services, replicaset, deployment
 > kubectl get all
 
 create pods with nginx
