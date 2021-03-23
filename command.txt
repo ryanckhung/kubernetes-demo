@@ -62,6 +62,10 @@ you may also need to run the following; because deployment may create replicaset
 > kubectl get replicaset
 > kubectl get pods
 
+Rollout
+> kubectl rollout status deployment/my-app-deployment
+> kubectl rollout history deployment/my-app-deployment
+
 
 The following create a deployment with the name httpd-frontend, with image=httpd:2.4-alpine
 then set the replicaset as 3
