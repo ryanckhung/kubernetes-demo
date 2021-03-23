@@ -102,8 +102,15 @@ Rollback:
 
 
 
-Service
+Service (enable to communicate between difference components, service help to connect application together)
+you can get the IP address of the kubernetes node by: (the internal private address is 10.244.0.0 and all pods are attached to it)
 > kubectl get service
+
+Service Type:
+NodePort: service makes an internal POD accessible on a Port on the Node (use to listen to a port on the Node and forward reques on that port to a port on the POD running the web appliation.)
+ClusterIP: the service creates a virtual IP inside the cluster to enable communication between different services such as a set of front-end servers to a set of backend servers.
+LoadBalancer: load balancer for the services
+
 > kubectl describe service <service-name>
 Create a service yaml file with name simple-webapp-deployment, with name web-service then map the port
 > kubectl expose deployment simple-webapp-deployment --name=web-service --target-port=8080 --type=NodePort --port=8080 --dry-run=client -o yaml > svc.yaml
