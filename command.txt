@@ -32,17 +32,17 @@ Check ReplicaSet
 > kubectl describe replicaset <replicaset-name>
 > kubectl describe pods (use to check error on creating the replicaset)
 
-Scale
-> kubectl replace -f replicaset-definition.yml
-> kubectl scale --replicas=6 -f replicaset-definition.yml
-> kubectl scale --replicas=6 <type> <name> 
-> kubectl scale --replicas=6 replicaset myapp-replicaset
-
 Delete ReplicaSet
 > kubectl delete replicaset <replicaset-name>
 
 Edit ReplicaSet
 > kubectl edit replicaset <replica-set-name>
+
+Scale
+> kubectl replace -f replicaset-definition.yml
+> kubectl scale --replicas=6 -f replicaset-definition.yml
+> kubectl scale --replicas=6 <type> <name> 
+> kubectl scale --replicas=6 replicaset myapp-replicaset
 
 Check Deployment
 > kubectl get deployment
