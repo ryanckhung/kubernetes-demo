@@ -6,6 +6,9 @@ Start the minikube for local
 > minikube status
 > minikube start --driver=virtualbox
 
+check all the existing pods, services, deployment
+> kubectl get all
+
 create pods with nginx
 > kubectl run nginx --image=nginx
 
