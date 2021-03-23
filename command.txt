@@ -64,6 +64,11 @@ Deployment
 you may also need to run the following; because deployment may create replicaset and pod
 > kubectl get replicaset
 > kubectl get pods
+if you have a replicaset and deployment yml file, deployment will override replicaset
+that's if you update the replicaset to 6 but the deployment is set to 1
+then it will finally become 1, (that's you set replicaset to 6, but deployment will force it back to 1)
+> kubectl scale --replicas=6 deployment/nginx
+
 
 Rollout
 > kubectl rollout status deployment/my-app-deployment 
