@@ -122,6 +122,10 @@ Create a service yaml file with name simple-webapp-deployment, with name web-ser
 
 
 
+Accessing the PODS through kubectl
+> kubectl exec -it <port-name> -- bash
+
+
 
 Show both of the pod and service together
 > kubectl get pods, svc
