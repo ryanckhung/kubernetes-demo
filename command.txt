@@ -1,5 +1,6 @@
 Command:
 
+Virtualbox must be installed before minikube can start
 Start the minikube for local
 > minikube start
 > minikube delete
