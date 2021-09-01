@@ -43,7 +43,7 @@ Update Pods
 Update the pod-definition file and use 'kubectl apply' command or use 'kubectl edit pod <pod-name>' command.
   
 GET / PUT / POST / DELETE is equivalence to get / edit / run /delete in k8s  
-  
+use edit / describe to check the details
 
 Get Number of Nodes
 > kubectl get nodes
