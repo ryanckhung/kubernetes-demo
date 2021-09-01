@@ -54,6 +54,44 @@ Scale (you can use kubectl edit rs <rs-name> to update the replicaset OR using t
 > kubectl scale --replicas=6 replicaset myapp-replicaset
 
 
+
+
+
+Namespace
+
+Namespace = House Mark Smith / Mark Williams; 
+inside Smith's Home, you just call Mark then it automatically refer to Mark Smith. 
+To call Mark Williams in Smith's Home, you need to call Mark Williams
+
+There is a Default, kube-system, kube-public namespace
+Or you can crate a Prod or Dev namespace 
+
+The following is the example of DNS used in K8s
+db-service.dev.svc.cluster.local
+cluster.local is the default domain name used in k8s
+svc is the service
+dev is the name space
+Db-service is the service name
+If inside the same namespace, you can simply call "db-service"
+
+> kubectl get namespace
+> kubectl get pods --all-namespaces
+
+> kubectl get pods (just get the pods in the default namespace)
+> kubectl get pods --namespace=kube-system (specify the pods in other namespace)
+
+> kubectl run redis --image=redis -n finance (create a redis image in namespace finance)
+
+> kubectl create -f xxx.yml (create pod in default namespace)
+> kubectl create -f xxx.yml --namespace=dev (create pod in dev namespace)
+Or you can specify the namespace in the yaml file under "metadata: namespace:"
+
+
+
+
+
+
+
 Deployment
 > kubectl create -f deployment-definition.yml
 > kubectl get deployments
