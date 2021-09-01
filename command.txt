@@ -37,6 +37,7 @@ Get Number of Nodes
 
 Check ReplicaSet
 > kubectl get replicaset
+> kubectl get rs
 > kubectl describe replicaset <replicaset-name>
 > kubectl describe pods (use to check error on creating the replicaset)
 
