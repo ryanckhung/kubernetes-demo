@@ -10,6 +10,21 @@ after the minikube is started, you can call the dashboard by
 > minikube dashboard
 
 
+Kube yaml file must have
+1. apiVersion; 2. Kind; 3. metadata; 4. spec 
+Yaml file indent can be by any number of spaces. 
+It will work as long as it is indented in the same level. 
+kubectl create -f <xxx.yml> (this will execute the yaml file in default namespace)
+
+IMPORTANT!!!!!!!!
+Reference Link:
+https://kubernetes.io/docs/reference/kubectl/conventions/
+The fastest way to generate a YAML TEMPLATE file
+>kubectl create deployment --image=nginx nginx --replicas=4 --dry-run=client -o yaml > nginx-deployment.yaml
+
+
+
+
 check all the existing pods, services, replicaset, deployment
 > kubectl get all
 
@@ -102,6 +117,8 @@ if you have a replicaset and deployment yml file, deployment will override repli
 that's if you update the replicaset to 6 but the deployment is set to 1
 then it will finally become 1, (that's you set replicaset to 6, but deployment will force it back to 1)
 > kubectl scale --replicas=6 deployment/nginx
+ususally deployment include replica set; replica set include pod (deployment > replica > pod)
+
 
 
 Rollout
