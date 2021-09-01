@@ -183,8 +183,6 @@ Create a service yaml file with name simple-webapp-deployment, with name web-ser
 > kubectl expose deployment simple-webapp-deployment --name=web-service --target-port=8080 --type=NodePort --port=8080 --dry-run=client -o yaml > svc.yaml
 
 
-
-
 Accessing the PODS through kubectl
 > kubectl exec -it <port-name> -- bash
 
