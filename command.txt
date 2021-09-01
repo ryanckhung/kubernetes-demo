@@ -44,7 +44,7 @@ Check ReplicaSet
 Delete ReplicaSet
 > kubectl delete replicaset <replicaset-name>
 
-Edit ReplicaSet
+Edit ReplicaSet; it will be automatically become effective after the file is edited and saved 
 > kubectl edit replicaset <replica-set-name>
 
 Scale
