@@ -171,6 +171,11 @@ ClusterIP: the service creates a virtual IP inside the cluster to enable communi
 LoadBalancer: load balancer for the services
 Summary: For a system, we will use the load balancer as the frist layer. Then we use NodePort to export the internal pods to load balancer. For internal pods, we use ClusterIP to connect them together.
 
+TargetPort = Port in the Pod
+Port = Port in the Service
+NodePort = Port in Node (30000 - 32767)
+Node <-> Service <-> Pod (Service connect the Node and Pod together)
+
 create a service yaml file, use selector and label to connect the pod (detail refer to the example in /Service)
 
 > kubectl describe service <service-name>
