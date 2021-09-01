@@ -107,7 +107,7 @@ Or you can specify the namespace in the yaml file under "metadata: namespace:"
 
 
 
-Deployment
+Deployment (allow rollout, rollback, pause, start)
 > kubectl create -f deployment-definition.yml
 > kubectl get deployments
 you may also need to run the following; because deployment may create replicaset and pod
