@@ -19,3 +19,6 @@ Best Practices is
 1. edit the yaml file, then run
 2. kubectl apply -f xxx.yaml
 "apply" will automaitcally handle all the things for you (it can act as create if it's not exist, update if the system exist)
+apply is the declarative approach, it will handle soemthing for you
+BUT crate, replace is imparative approach, it will do exactly what you asked to do; NO auto. handleing feature
+THEREFORE, don't mix the imperative and declarative approach
