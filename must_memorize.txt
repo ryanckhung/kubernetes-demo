@@ -22,3 +22,6 @@ Best Practices is
 apply is the declarative approach, it will handle soemthing for you
 BUT crate, replace is imparative approach, it will do exactly what you asked to do; NO auto. handleing feature
 THEREFORE, don't mix the imperative and declarative approach
+
+export the existing running pod config to a yaml file
+kubectl get pod <pod-name> -o yaml > xxx.yaml
