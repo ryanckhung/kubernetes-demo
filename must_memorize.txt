@@ -1,7 +1,7 @@
 Kubernetes General Command Structure:
 kubectl <verb> <nonu> <name> <option>
 <verb> can be: create, run, edit, delete, get
-<noun> can be: pod, deployment, service, replicaset (rs)
+<noun> can be: pod, deployment, service, replicaset (rs), namespace (ns)
 <name> name of the app
 <option> usually in the format of "--xxx-yyy=zzz"
 
