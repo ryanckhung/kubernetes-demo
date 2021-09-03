@@ -255,3 +255,24 @@ Example to create a static pod
 
 Multiple Scheduler (k8s can have multiple schedulers, the pod definition file can specify which scheduler to use)
 Can use kube-scheduler.service to define the additional scheduler (Udemy Section 76)
+
+
+
+
+
+
+Logging
+Monitor Cluster Components
+To monitor the cluster, we need to have a third party log matrix tool
+> git clone https://github.com/kodekloudhub/kubernetes-metrics-server.git
+After download the above git, enter the folder and install all the yaml files by
+> kubectl create -f .
+Then run
+> kubectl top node
+> kubectl top pod --sort-by='memory'
+
+For logging a docker:
+> dockers logs -f <docker-name> (the -f option will make the log run in live)
+For logging a Pod (one pod may have many containers)
+> kubectl logs -f <pod-name> <container-name> (for multiple container)
+> kubectl logs -f <pod-name> (for single container)
