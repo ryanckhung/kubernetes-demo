@@ -194,3 +194,64 @@ Show both of the pod and service together
 to kick up the system, you can
 1. run individual pod files + individual service files
 2. run individual deployment files + individual service files
+
+
+
+
+
+Scheduler
+Scheduling is talking about putting a pod in a Node (set tolerate, affinity, resource in the pod; schedluer will base on this to put into node)
+Label and selectors: you can add many labels as you want; uses selector to filter out base on the label
+> kubectl get pods --selector key=value
+> kubectl get all --selector env=prod,bu=finance,tier=frontend --no-headers | wc -l
+
+Taints and Tolerations: Example, Tainted person make intolerant bugs go; Tainted person can't make tolerant bugs go (person=node, bug=pod)
+If no taints and tolerate, the schedule will put the pod evenly across the node. 
+If the node is tainted, only the scheduler can only place tolerated pod into this tainted node.
+Taints and Tolerations doesn't ensure the tolerated pod can goto a particular tainted node. It just can tell which tolerated pods can come in.
+> kubectl describe node node01 | grep -i taints (check a node if tainted)
+> kubectl taint nodes node01 spray=mortein:NoSchedule (taint a node with key=spray value=mortein with effect=NoSchedule)
+> kubectl taint nodes node1 key1=value1:NoSchedule
+
+Taints the node by command
+Tolerate the pod by edit the yaml file
+
+It is impossible to memorise all the command, you need to know how to make use of document
+https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+
+To remove the taint
+> kubectl taint nodes node1 key1=value1:NoSchedule-
+
+
+Node Selector: (use the label matching; Node affinity is the best practice on node selection; no advance/complex expression for node selector)
+In the POD: use "nodeSelector: size: Large", define it in yaml file
+In the Node: kubectl label nodes node-1 size=Large
+> kubectl get node <node-name> --show-labels
+> kubectl label node node01 color=blue (can add label to the node at anytime)
+
+Node Affinity: (ensure the pods host in particular node; can have a more complex solution then node selector)
+Add label to node
+Add affinity to pod's yaml
+
+Node Affinity + Taint and Tolerate always work together (watch Udemy Section 64)
+
+Set Pod Resource in yaml file
+
+Daemon Sets: will ensure one copy of the pod is always present in all nodes (eg. Logs)
+Daemon sets yaml file with "kind: DaemonSet", it will specify which container to be the daemon set
+> kubectl get daemonsets --all-namespaces (daemonsets command is similar to deployment, replicas,)
+
+
+Static Pod (is talking about no control plane, no controller, no scheduler, etc. only have the pod itself)
+The kubelet inside the pod will check the defined path to read the YAML file
+It can just run on Pod level, therefore the YAML file can't have any deployment, replica elements
+The details is listed in kubelet.service
+Static pod definition files are stored in /etc/kubenetes/manifests (can be change, depends on the config)
+After it's created you can't use the kubectl command, you should use docker command instant
+Because currently no kube api server is there
+Usually used to define the control plane
+Example to create a static pod
+> kubectl run --restart=Never --image=busybox static-busybox --dry-run=client -o yaml --command -- sleep 1000 > /etc/kubernetes/manifests/static-busybox.yaml
+
+Multiple Scheduler (k8s can have multiple schedulers, the pod definition file can specify which scheduler to use)
+Can use kube-scheduler.service to define the additional scheduler (Udemy Section 76)
