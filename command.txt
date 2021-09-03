@@ -276,3 +276,107 @@ For logging a docker:
 For logging a Pod (one pod may have many containers)
 > kubectl logs -f <pod-name> <container-name> (for multiple container)
 > kubectl logs -f <pod-name> (for single container)
+
+
+
+
+
+
+
+Docker Volume vs Docker Bind Mode
+Docker Volume: use the docker default host path
+Docker Bind Mode: map to a specified host path
+
+Docker Volume:
+Method 1:
+> docker volume create data_volume (this will create a data_volume under the docker default path /var/lib/docker/volumes/)
+> docker run -v data_volume:/var/lib/mysql mysql (this will map docker path /var/lib/mysql to host path /var/lib/docker/volumes/data_volume)
+Method 2:
+> docker run -v data_volume:/var/lib/mysql mysql (if you don't enter the "docker volume create" command, this will auto generate the host path "/var/lib/docker/volumes/data_volume" and map to container path "/var/lib/mysql")
+
+Docker Bind Mode:  (fix a volume to a pod, not practical if there are a lot of pod sharing the volume)
+Method 1:
+> docker run -v /data/mysql:/var/lib/mysql mysql (/data/mysql is the host path, /var/lib/mysql is the container path; it auto become the bind mode because path is specified)
+Method 2: (a newer method than method 1)
+> docker run --mount type=bind,source=/data/mysql,target=/var/lib/mysql mysql (same results as Method 1 but in a more modern way to achieve it)
+
+
+
+In Kubernetes:
+You can define the host volume and container volume inside the YAML file
+=====================================================
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pd
+spec:
+  containers:
+  - image: k8s.gcr.io/test-webserver
+    name: test-container
+    volumeMounts:
+    - mountPath: /test-pd
+      name: test-volume
+  volumes:
+  - name: test-volume
+    hostPath:
+      # directory location on host
+      path: /data
+      # this field is optional
+      type: Directory
+=====================================================
+
+
+Persistent Volume (tell the specification of the volume) and Persistent Volume Claim (tell the requirement of the volume)
+K8s will try to fit the persistent volume claim to the right persistent volume
+You need to tell the pod to use the persistent volume claim (pvc), k8s will map pvc to pv according to the resource requirement 
+=====================================================
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-log
+spec:
+  persistentVolumeReclaimPolicy: Retain
+  accessModes:
+    - ReadWriteMany
+  capacity:
+    storage: 100Mi
+  hostPath:
+    path: /pv/log
+=====================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: claim-log-1
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Mi
+=====================================================
+> kubectl get pvc (PVC = persistent volume claim)
+> kubectl get pv (PV = persistent volume)
+
+
+Apply the persistent volume to the pod
+=====================================================
+apiVersion: v1
+kind: Pod
+metadata:
+  name: webapp
+spec:
+  containers:
+  - name: event-simulator
+    image: kodekloud/event-simulator
+    env:
+    - name: LOG_HANDLERS
+      value: file
+    volumeMounts:
+    - mountPath: /log
+      name: log-volume
+
+  volumes:
+  - name: log-volume
+    persistentVolumeClaim:
+      claimName: claim-log-1
+=====================================================
