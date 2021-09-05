@@ -205,6 +205,8 @@ Label and selectors: you can add many labels as you want; uses selector to filte
 > kubectl get pods --selector key=value
 > kubectl get all --selector env=prod,bu=finance,tier=frontend --no-headers | wc -l
 
+You can assign a Pod by specify nodeName in the Pod Yaml file. The schedule will base on the node name to put the pod into a particular node.
+
 Taints and Tolerations: Example, Tainted person make intolerant bugs go; Tainted person can't make tolerant bugs go (person=node, bug=pod)
 If no taints and tolerate, the schedule will put the pod evenly across the node. 
 If the node is tainted, only the scheduler can only place tolerated pod into this tainted node.
