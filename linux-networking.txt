@@ -1,0 +1,37 @@
+# refer to kubernetes udemy section 186 and 187
+
+# Switching
+switching the packet within the same network. eg. 192.168.1.0/24
+> ip link (check network interface)
+> ip addr (show ip address)
+> ip addr add 192.168.1.10/24 dev eth0 (assign the IP address to the network interface)
+
+# Routing
+Route IP to other network: eg. sending packet between 192.168.1.0/24 and 192.168.2.0/24
+> ip route (show routing table;)
+> route    (show routing table; by net-tools)
+> ip route add 192.168.1.0/24 via 192.168.2.1 (for computer in 192.168.2.0/24 network to send packet to 192.168.1.0/24 network via the gateway 192.168.2.1)
+> cat /proc/sys/net/ipv4/ip_forward (1=enable forwarding; this set linux host as router; the host should have 2 networking interfaces; 1 means enable forwarding between network interface)
+> ip route add default via 192.168.2.1 (host is in 192.168.2.0/24 network; default means any network not equal 192.168.2.0/24 will send to the gateway 192.168.2.1)
+when you enter "> route", and you see
+1. Destination = default, gateway = 192.168.2.1 (means the destination to all networks except 192.168.2.0/24 will send through the gateway 192.168.2.1; default=0.0.0.0=any IP)
+2. Destination = 192.168.2.0 gateway = 0.0.0.0 (in here means you are at 192.168.2.0/24; 0.0.0.0 means no gateway is needed)
+
+
+# DNS (ip and name mapping)
+1. check local host IP naming mapping
+> cat /etc/hosts  (the host will look at this file to check the host's IP-Name mapping; the format is in "192.168.1.2       db")
+by checking the /ect/hosts, the host will know that db refer to 192.168.1.2 (even 192.168.1.2 call db-123)
+> ping db (is equal to ping 192.168.1.2)
+2. check DNS server
+> cat /etc/resolv.conf (this file point to the dns server by: nameserver 192.168.1.100)(nameserver 8.8.8.8)(8.8.8.8 is google DNS server)
+[check local host IP naming mapping has higher priority than DNS server]
+
+A -> IP and domain name mapping
+CNAME -> domain and sub domain name mapping
+
+Other tools
+> nslookup www.google.com
+> dig www.google.com
+
+
