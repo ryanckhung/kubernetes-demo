@@ -382,3 +382,12 @@ spec:
     persistentVolumeClaim:
       claimName: claim-log-1
 =====================================================
+
+Storage Class
+For PV connect to the cloud, you need to define the volume in the cloud and specify it in the persistent volume. Storage Class is try to automate this process.
+Step 1. Create Storage Class; Step 2. Create PVC and associate it to the storage class
+In other words, we replace PV with Storage Class
+> kubectl get sc (sc = storage class)
+
+
+
