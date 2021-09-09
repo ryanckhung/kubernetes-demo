@@ -1,0 +1,146 @@
+Application Life Cycle
+> kubectl rollout status deployment/nginx-x (check the rollout status of deployment)
+> kubectl rollout status deployment nginx-x (same effect as above)
+> kubectl rollout history deployment nginx-x
+Deployment Strategy
+1. Recreate: Destroy all and recreate all (there is a downtime due to all goes off)
+2. Rolling Update: Make one down then bring up one immediately 
+When you update the yaml file and apply (kubectl apply -f xxx.yaml) or (kubectl edit deployment xxx), a new rollout is triggered.
+> kubectl rollout undo deployment nginx-x (will rollback to the previous version)
+
+
+Command in Docker
+> docker run ubuntu (you will find that it run and exit immediately; because when the task (process) is completed, the container exit; )
+Inside the Docker file, there is a CMD["nginx"] will tell what should be run 
+> docker run ubuntu sleep 5 (directly run the command in the command line)
+Or you can edit it in the Docker file by
+FROM Ubuntu
+CMD sleep 5
+
+Command line should be in the following format
+CMD command param1  (CMD sleep 5)
+OR
+CMD ["command","param1"]  (CMD ["sleep","5"])
+
+Docker File will hardcoded the parameter, to override it use
+> docker run <docker-name> sleep 10 (sleep 10 will replace the CMD specify in docker file)
+
+A better way to pass the parameter is to use the ENTRYPOINT. The following is the docker file
+FROM Ubuntu
+ENTRYPOINT["sleep"]  (Entry point just specify the command to run without pass the parameters)
+In the host, you pass in the parameters without telling to call sleep
+> docker run <docker-name> 10  (this will call the program specified in Docker file entry point and provid the parameter 10)
+
+In General:
+Command line will replace the command specify in CMD
+Command line will append the parameter to command specify in ENTRYPOINT
+
+If you just specify the ENTRYPOINT in Dockerfile, when command line parameter is missing, it will generate an error.
+Therefore ENTRYPOINT usually combine with CMD in Docker file. Eg.
+FROM Ubuntu
+ENTRYPOINT["sleep"]
+CMD["5"]
+In this case if command line is
+> docker run <docker-name> (this case parameter is missed, it will combine ENTRYPOINT and CMD together; that's sleep 5)
+> docker run <docker-name> 10 (this case parameter is applied, the value 10 will override CMD; and give sleep 10)
+To override the entry point
+> docker run --name <docker-name> --entrypoint sleep2.0 <image-name> 10 (use --entrypoint to override ENTRYPOINT)
+
+
+How Docker map with K8s
+In Docker:
+FROM Ubuntu
+ENTRYPOINT["sleep"]
+CMD["5"]
+
+In K8s:
+containers:
+  -name: ubuntu-sleeper
+   image: ubuntu-sleeper
+   command:["sleep2.0"]
+   args["10"]
+
+ENTRYPOINT map with command
+CMD map with args
+
+
+Environment in Docker and K8s
+> docker run -e APP_COLOR=pink simple-webapp-color
+In K8s, pod yaml file
+containers:
+   - name: xxxx
+     .....
+     env:
+       - name: APP_COLOR
+         value: pink
+
+Environment variable can also presented by config map or secret key
+ConfigMap is used to centralised the environment variable
+> kubectl get configmaps
+
+Declarative:
+========================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  APP_COLOR: blue
+  APP_MODE: prod
+========================
+
+Imperative:
+> kubectl create configmap app-config --from-literal=APP_COLOR=blue \
+                                      --from-literal=APP_MOD=prod
+
+
+Pod Yaml
+========================
+containers:
+- envForm:
+  - configMapRef:
+       Name: app-config
+========================
+
+
+Secret is similar to configMap but the data stored will be encoded (usually store for password)
+You can't store the password as plain text in the YAML file, you should run 
+> echo -n 'password' | base64
+> echo -n "cGFzc3dvcmQ=" | base64 --decode
+> kubectl get secret
+The yaml file of a secrete data must be in base64 format (it will show error if it's not base64 encoded)
+===============================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-secret
+data:
+  DB_Host: c3FsMDE=
+  DB_User: cm9vdA==
+  DB_Password: cGFzc3dvcmQxMjM=
+================================
+apiVersion: v1 
+kind: Pod 
+metadata:
+  labels:
+    name: webapp-pod
+  name: webapp-pod
+  namespace: default 
+spec:
+  containers:
+  - image: kodekloud/simple-webapp-mysql
+    imagePullPolicy: Always
+    name: webapp
+    envFrom:
+    - secretRef:
+        name: db-secret
+================================
+
+
+> kubectl -n elastic-stack exec -it app -- cat /log/app.log (-n Swatch to elastic-stack namespace, exec -it (run) pod with a single container)
+> kubectl get pod orange -o yaml. (Get the yaml file of the existing pod)
+
+
+
+
+
