@@ -1,0 +1,80 @@
+Cluster Maintenance
+Drain is used for upgrade, it will move the running pod to other node
+When you have upgraded the node use uncordon to make it return to normal
+But the moved pod won't go back to this upgraded node automatically
+Cordon make the node to be unschedulable, but it won't move the pod to other node
+
+> kubectl get pods -o wide (check the pod running on which node)
+> kubectl drain node01 --ignore-daemonsets (this will move all the running pod from node01 to other node. node01 will become unschedulable This is used for maintenance)
+> kubectl uncordon node01 (uncordon node01 will become schedulable; only new scheduled pod will goto uncordon node; drained pod will not go back to uncordon node)
+the pod cannot be removed if it's not managed by replicaset (to force it to go by --force)
+A forceful drain of the node will delete any pod that is not part of a replicaset. (it will never put the non-replicaset node back to the other node)
+
+If pod is NOT in a replicaset and you don't want it to force drain (force drain will make NON replicaset to loss). 
+Then you can use cordon to prevent new pods schedule to this node (but keep the existing pod).
+Do not drain, instead use the kubectl cordon command. 
+This will ensure that no new pods are scheduled on this node and the existing pods will not be affected by this operation.
+
+> kubectl get nodes (check current version of a cluster)
+
+Number of applications = number of deployments
+
+Step to upgrade
+Step 1: Check the version status
+> kubeadm upgrade plan
+Step 2: Update the Master Node
+> kubectl drain controlplane --ignore-daemonsets 	(move the running pod to other nodes)
+> sudo apt update					(upgrade the linux)
+> sudo apt install kubeadm=1.20.0-00			(install kubeadm 1.20)
+> sudo kubeadm upgrade apply v1.20.0			(upgrade kubernetes controlplane)
+> sudo apt install kubelet=1.20.0-00			(update the kubelet to v1.20)
+> sudo systemctl restart kubelet			(restart the kubelet)
+> kubectl uncordon controlplane				(make the control plane to be available again)
+Step3: Update the worker node
+> kubectl drain node01 --ignore-daemonsets
+> ssh node01						(login into the worker node, node01, and upgrade the node)
+> apt update						(do the something as the master node)
+> apt install kubeadm=1.20.0-00
+> kubeadm upgrade node
+> apt install kubelet=1.20.0-00
+> systemctl restart kubelet
+> exit
+> kubectl uncordon node01
+
+
+
+Backup
+You should consider
+1. Resource Configuration (by backup the yaml file)
+2. ETCD Cluster (refer to file etcd.service -> --data-dir=/var/lib/etcd)
+3. Persistent Volume
+
+
+
+ 
+Checking for Etcd
+> kubectl get pods -n kube-system
+> kubectl describe pod etcd-controlplane -n kube-system
+
+      --listen-client-urls=https://127.0.0.1:2379,https://10.0.97.9:2379
+      --cert-file=/etc/kubernetes/pki/etcd/server.crt
+      --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt
+
+Take a snapshot of etcd to "/opt/snapshot-pre-boot.db"
+> ETCDCTL_API=3 etcdctl --endpoints=https://[127.0.0.1]:2379 \
+                        --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+                        --cert=/etc/kubernetes/pki/etcd/server.crt \
+                        --key=/etc/kubernetes/pki/etcd/server.key \
+                        snapshot save /opt/snapshot-pre-boot.db
+
+Restore a snapshot of ectd
+> ETCDCTL_API=3 etcdctl  --data-dir /var/lib/etcd-from-backup \
+			 snapshot restore /opt/snapshot-pre-boot.db
+Next, update the /etc/kubernetes/manifests/etcd.yaml: (because restore path is changed)
+volumes:
+  - hostPath:
+      path: /var/lib/etcd-from-backup
+      type: DirectoryOrCreate
+    name: etcd-data
+After the yaml file is updated, the etcd will restart automatically    
+    
