@@ -1,0 +1,371 @@
+
+Security
+Focus on kube-apiserver
+Who can access? (eg. Username, password, token, certification, third party)
+What can they do? (eg. RBAC Auth)
+Kube-apiserver will auth user and then process the request
+
+Kube-apiserver can verify the identity by 
+1. Static Password File (a csv file with password, username, user id)
+	this xxx.css should specify in kube-apiserver.service file with "--basic-auth-file=xxx.csv"
+2. Static Token File
+	similar to method 1. But both 1 and 2 is not a good practice; just for you to understand the idea
+3. Certificates
+4. Identity Services
+
+
+
+TLS Basic (Udemy - k8s section 141r)
+Symmetric Encryption: both encrypt
+Asymmetric Encryption: public and private keys (public key to lock, only the holder of private key can open it)
+
+Example, ssh: the user of ssh is the holder of private key, the login machine will have a public key (the lock to be open by private key)
+Example, https: first use the public and private key to transmit the symmetric key to the web server; after that use symmetric key to do encryptions and decryptions
+         When the user access the https website; the server will send a public key to the browser; then user browser use the public key to encrypt the symmetric key and send it back to the web server; the web server use the private key to get back the symmetric key; then user browser and the server use the symmetric key to communicate
+         The Public key should send with a Third party (certificate authority, eg. Symantec, digicert, etc) auth certificate to prove this public is a real key but not a hacker redirected site. All browsers are build in with all the public key from certificate authorities. To verify if the web server public key is a real one, the web server need to send the public key to certificate authority to sign (by using certificate authority's private key to sign the web server's public key), then send the signed public key back to the web server. Next time when user access the https, the web server will send the signed public key to the browser. The browser will use the build in certificate authority public key to get the web server public key back.
+
+> ssh-keygen (generate both of the public and private key; id_rsa is the private key, id_rsa.pub is the public key)
+> openssl genrsa -out my-bank.key 1024
+> openssl rsa -in mybank.key -pubout > mybank.pem
+
+Public key - *.crt, *.pem
+Private key - *.key, *.key.pem
+
+
+K8s all nodes are protected by certificate. 
+Server Certificate: eg. api server, etcd server, kubelet
+Client Certificate: eg. Admin, kube-scheduler, kube-controller-manager, kube-proxy 
+
+Identify the certificate file used for the kube-api server (it is generated when you install kubeadm)
+> cat /etc/kubernetes/manifests/kube-apiserver.yaml
+Identify the ETCD Server CA Root Certificate sued to serve ETCD Server
+> cat /etc/kubernetes/manifests/etcd.yaml
+
+
+> openssl x509 -in /etc/kubernetes/pki/apiserver.crt -text
+
+=====================================
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: akshay
+spec:
+  groups:
+  - system:authenticated
+  request: MIICVjCCAT4CAQAwETEPMA0GA1UEAwwGYWtzaGF5MIIBIjANBgkqhkiG9w0BAQEF
+AAOCAQ8AMIIBCgKCAQEA+CIf5ZtNGmUIO+rTLttnoo8LtkpOG4JiK7nHRoZfizxe
+P/R1qIFfwW3qmsQjJGwsBtavzx75eNe2Tr7AOu6dF9o2OxfxqOEyi3r7cD6Hy5Ei
+T0FX+77ehr0AugkPFD0IPUN2fJLHgi9yl7eLcLuhxSPPg9arG+HZlnROnlcSIq9x
+kud61VKYrIdkQp4rbW9Xvh2CIV6nlmKbkILLGOVPWPs5V739p2T2MSKsM2AmvLd7
+TJfvCQsjNpxOK1nU3WdibTuk1OhMU8JNrbU9FwbBIbG76N13/YYA1Wd3S+CxVe/g
+7jBsYVRctCGkix3k0n/+75dKnT4HoiWJyEZX5DplxQIDAQABoAAwDQYJKoZIhvcN
+AQELBQADggEBAD4KeA6GGMtn/UBu8EU5L/wYyjedo6gxwbKvQhHlPP/0cpOjglms
+QVkUN6KfWNaQBStAreLN823o1cp/bTBfxWaDoWguzeFbSMrBgaCCSExTN0VW/Vm3
+oEJx3nENgapuc/HsCJQP8Y8uvxyXZDFONVsambprMPTaO73ufFG17kKddxquX8qg
+1gA14ueoDRXlBBZ7pebWhYzsYk/HLaWSPy+bMi8J4LTuW0KYhKG31tu5rcTeHyYo
+Cux3H6VW0qgk1sw620oxuBziIlwUzKkX8BgBMbknbvqUrwL82N/h8A5Ln3J/zl+k
+ONCB8KnukXq9cNA3O1Q/7oCkJnitH4HBDM0=
+  signerName: kubernetes.io/kube-apiserver-client
+  usages:
+  - client auth
+=========================================
+
+> kubectl get csr (css = certificate signing request)
+> kubectl certificate approve akshay (approve the certificate)
+> kubectl get csr agent-smith -o yaml
+> kubectl certificate deny agent-smith (deny the csr)
+> kubectl delete csr agent-smith	(deny then delete)
+
+
+
+
+
+kubeConfig
+Store the path where the cert store, such that we don't need to enter the cert every time we call the command 
+Default path is $HOME/.kube/config
+Three sections inside the kubeConfig file: Clusters, Contexts and Users. Contexts is used to map which Users can use which Clusters
+> kubectl config --kubeconfig=/root/my-kube-config use-context research (--kubeconfig tell where is the config file; use-context tell system to use the context named research)
+
+
+API Groups
+Actually the kubectl command is equivalent to an API call
+
+Role Based Access Controls (RBAC); Authorisation base on role (group)
+Create a Role yaml file (describe which role can take what action on what resource); 
+then create a RoleBinding yaml file (tell which group is bind to the role yaml file)
+
+> kubectl describe pod kube-apiserver-controlplane -n kube-system (check for authorisation mode)
+> kubectl get roles
+> kubectl describe role kube-proxy -n kube-system
+> kubectl describe rolebinding kube-proxy -n kube-system
+> kubectl get pods --as dev-user (run the command as the dev-user)
+
+> kubectl create role developer --namespace=default --verb=list,create --resource=pods (create role)
+> kubectl create rolebinding dev-user-binding --namespace=default --role=developer --user=dev-user (create role binding)
+
+
+=====================================================
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: default
+  name: developer
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list", "create"]
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: dev-user-binding
+subjects:
+- kind: User
+  name: dev-user
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: developer
+  apiGroup: rbac.authorization.k8s.io
+=====================================================
+
+
+
+
+
+Cluster Roles and Role Bindings
+K8s define group in terms of namespaces and cluster.
+Cluster Roles group resource in terms of cluster.
+> kubectl get clusterroles --no-headers | wc -l
+> kubectl get clusterrolebindings --no-headers | wc -l
+> kubectl describe clusterrolebinding cluster-admin
+
+The following yaml file add a new user Michelle to join the team.
+She will be focusing on the nodes in the cluster
+=====================================================
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: node-admin
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "watch", "list", "create", "delete"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: michelle-binding
+subjects:
+- kind: User
+  name: michelle
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: node-admin
+  apiGroup: rbac.authorization.k8s.io
+=====================================================
+
+The following will allow Michelle to access the storage
+=====================================================
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: storage-admin
+rules:
+- apiGroups: [""]
+  resources: ["persistentvolumes"]
+  verbs: ["get", "watch", "list", "create", "delete"]
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses"]
+  verbs: ["get", "watch", "list", "create", "delete"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: michelle-storage-admin
+subjects:
+- kind: User
+  name: michelle
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: storage-admin
+  apiGroup: rbac.authorization.k8s.io
+=====================================================
+
+
+
+
+
+
+Service Accounts
+Service accounts are used for bot/pod. For example, you grant a permission for a pod to access the database.
+> kubectl get serviceaccounts
+> kubectl describe serviceaccount <service account name>
+> kubectl create serviceaccount dashboard-sa     (create a new service account)
+> kubectl describe serviceaccounts dashboard-sa
+> kubectl describe secret <token-name-under-service-accounts>
+> kubectl describe secret dashboard-sa-token-sh8gk
+
+=====================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-dashboard
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: web-dashboard
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        name: web-dashboard
+    spec:
+      serviceAccountName: dashboard-sa
+      containers:
+      - image: gcr.io/kodekloud/customimage/my-kubernetes-dashboard
+        imagePullPolicy: Always
+        name: web-dashboard
+        ports:
+        - containerPort: 8080
+          protocol: TCP   
+=====================================================
+
+
+
+
+Image Security
+It is talking about where to pull the images.
+image: <Registry>/<User Account>/<Image Repository>
+image: docker.io/nginx/nginx 
+
+
+
+Security Contexts
+Set the user ID and tell which user can use a specific Pod.
+> kubectl exec ubuntu-sleeper -- ls   (exec a pod -- <command>)
+The following yaml file, run the process with user ID 1010
+=====================================================
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ubuntu-sleeper
+  namespace: default
+spec:
+  securityContext:
+    runAsUser: 1010
+  containers:
+  - command:
+    - sleep
+    - "4800"
+    image: ubuntu
+    name: ubuntu-sleeper
+=====================================================
+The User ID defined in the securityContext of the container overrides the User ID in the POD.
+=====================================================
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multi-pod
+spec:
+  securityContext:
+    runAsUser: 1001
+  containers:
+  -  image: ubuntu
+     name: web
+     command: ["sleep", "5000"]
+     securityContext:
+      runAsUser: 1002
+
+  -  image: ubuntu
+     name: sidecar
+     command: ["sleep", "5000"]
+=====================================================
+Update pod ubuntu-sleeper to run as Root user and with the SYS_TIME capability.
+=====================================================
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ubuntu-sleeper
+  namespace: default
+spec:
+  containers:
+  - command:
+    - sleep
+    - "4800"
+    image: ubuntu
+    name: ubuntu-sleeper
+    securityContext:
+      capabilities:
+        add: ["SYS_TIME"]
+=====================================================
+
+
+
+
+
+
+Network Policy
+By default the pod inside the k8s can communicate with each other.
+Therefore network policy is needed to restrict the traffic between the pods. (Control the ingress and egress)
+If Pod C is query and responds to the same Pod A; only ingress is needed to define for Pod C (No egress is needed to define for responding to the same origin)
+If Pod C need to initial a request to Pod D; then only the egress of Pod C is needed to define
+If Pod C is query by Pod A and the respond goto Pod B; then both ingress and egress of the Pod C are needed to defined
+> kubectl get networkpolicy
+> kubectl get netpol
+> kubectl describe networkpolicy payroll-policy
+
+
+=====================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: internal-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      name: internal
+  policyTypes:
+  - Egress
+  - Ingress
+  ingress:
+    - {}
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          name: mysql
+    ports:
+    - protocol: TCP
+      port: 3306
+
+  - to:
+    - podSelector:
+        matchLabels:
+          name: payroll
+    ports:
+    - protocol: TCP
+      port: 8080
+
+  - ports:
+    - port: 53
+      protocol: UDP
+    - port: 53
+      protocol: TCP
+=====================================================
+
