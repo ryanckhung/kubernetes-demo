@@ -30,7 +30,7 @@ by checking the /ect/hosts, the host will know that db refer to 192.168.1.2 (eve
 A -> IP and domain name mapping
 CNAME -> domain and sub domain name mapping
 
-Other tools
+Other tools (Query DNS)
 > nslookup www.google.com (query the DNS server, but not asking the local /etc/hosts)
 > dig www.google.com
 
