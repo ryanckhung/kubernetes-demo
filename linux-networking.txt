@@ -31,7 +31,7 @@ A -> IP and domain name mapping
 CNAME -> domain and sub domain name mapping
 
 Other tools
-> nslookup www.google.com
+> nslookup www.google.com (query the DNS server, but not asking the local /etc/hosts)
 > dig www.google.com
 
 
