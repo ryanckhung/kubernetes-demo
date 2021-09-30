@@ -35,3 +35,98 @@ Other tools (Query DNS)
 > dig www.google.com
 
 
+
+
+
+
+
+Host Networking:
+The following namespace is referring to the "Linux Network Namespaces".
+Host will have it's now set of routing table and Namespace will have their own set of routing table.
+The network namespace can't access host's routing table
+> ip netns add red (create a network namespace red)
+> ip netns add blue
+> ip netns (list all the network namespace)
+> ip link (list the interface of the hosts)
+> ip nets exec red ip link (check the interface of the namespace red)
+> ip -n red link (check the interface of the namespace red, same as the above)
+> route (check routing table in the host)
+> ip nets exec red route (check the routing table in the namespace)
+There are no connectivity between two network namespaces. You need to add the interface to the network namespace.
+Details please refer to udemy section 189 network namespaces
+
+
+Docker Networking: (none, host, bridge) [bridge is the most important concept]
+> docker run --network none nginx (the none network make the container isolated from host)
+> docker run --network host nginx (this will make it available in the host network [same IP address as host] with port 80)
+> docker run --network host nginx (since the above command already occupy port 80; this command will not work)
+> docker run nginx (default is connected to the bridge network; each container connected to the bridge network will have it's own IP address)
+> docker network ls (you can see something attached to the bridge network)
+> ip link (in the host, you can see docker0 is added as a Linux Network Namespace to the system)
+Only the container inside the bridge network or the host can access the containers. But the external host can't access the docker.
+For external access you need to do the port mapping (> docker run -p 8080:80 nginx)
+Then in the external host you can use <host-ip>:8080 to access the container content
+
+
+Container Network Interface (CNI):
+Define how the plugin should be develop. (Eg. Create virtual interface, virtual cable, connect virtual devices together)
+Docker is not strictly use the CNI model. Therefore in K8s, it create the container with the none network, then following a CNI plugin.
+It is configured in kubelet.service -> --cni-bin-dir
+In this course, it use "weaveworks" as the third party CNI
+Simply speaking Weaveworks act as a router between Nodes.
+CNI Plugin should
+1. Must support arguments ADD/DEL/CHECK
+2. Must support parameters container id, network ns etc
+3. Must manage IP address assignment to PODs
+4. Must return results in a specific format
+
+
+
+Cluster Networking is talking about how each physical node connect with each others.
+
+
+Pod Networking
+Every POD should have an IP address
+Every POD should be able to communicate with every other POD in the same node
+Every POD should be able to communicate with every other POD on other nodes without NAT
+Use third party to link up the POD. Actually the third party tool is using Linux Network Namespace concept
+
+
+
+Services Networking （talking about pod access service hosted on another pod）
+ClusterIP: only the node inside the cluster can access the service (eg. Database)
+Reference: https://cizixs.com/2017/03/30/kubernetes-introduction-service-and-kube-proxy/
+When service is created, it can be accessible from all parts on the cluster. (This service is called ClusterIP)
+Node Port make the pod can be accessible OUTSIDE the cluster.
+Services are Cluster Wise Concept.
+Services will arrange the IP address due to the dynamic add or remove pods.
+Simply speaking: when Services are created, services will be in different IP domain as the POD. But it handle the address conversion by the services.
+
+
+
+DNS in k8s:
+Kube DNS will store the "hostname" - "IP address" mapping and store it in the kubeDNS
+It store the address of the POD and service
+CoreDNS is deploy as POD in the K8s
+> cat /etc/coredns/Corefile
+
+
+
+Ingress:
+Ingress just like a layer with a load balancer, SSL, URL path routing
+Ingress is similar to Nginx which preform the reverse proxy
+Ingress is talking about "Ingress Controller" and "Ingress Resources"
+Ingress controller can be nginx (nginx will be deployed as a pod for ingress controller)
+To deploy an Nginx as a ingress controller, you should:
+1. Setup the deployment yaml
+2. Setup the service yaml (to expose the service to the network)
+3. Setup the ConfigMap yaml (feed nginx configuration data)
+4. Setup the Auth (service account with he right permission to access the object)
+5. Setup the Role, ClusterRoles and RoleBinding 
+Ingress Resources is a set of rules and configurations applied on the ingress controller. It can be:
+1. Direct route the traffic to a 
+2. Route traffic base on the URL path (eg. www.abc.com/wear)
+3. Route traffic base on sub-domain (eg. xxx.abc.com)
+The yaml file of ingress resource is defined with "kind = Ingress" and route traffic to service
+
+
