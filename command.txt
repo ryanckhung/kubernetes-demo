@@ -1,5 +1,5 @@
-Basic Tutorial:
-https://kubernetes.io/docs/tutorials/kubernetes-basics/_print/
+Basic Tutorial: (MUST try it! Official interactive tutorial)
+https://kubernetes.io/docs/tutorials/kubernetes-basics/
 
 
 Command:
