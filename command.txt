@@ -1,3 +1,7 @@
+Basic Tutorial:
+https://kubernetes.io/docs/tutorials/kubernetes-basics/_print/
+
+
 Command:
 
 Virtualbox must be installed before minikube can start
