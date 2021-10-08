@@ -1,6 +1,9 @@
 Basic Tutorial: (MUST try it! Official interactive tutorial)
 https://kubernetes.io/docs/tutorials/kubernetes-basics/
 
+Online playground: (good place to play around)
+https://labs.play-with-k8s.com/
+
 
 Command:
 
