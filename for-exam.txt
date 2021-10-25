@@ -1,0 +1,186 @@
+//======================================================================================
+
+//third time training
+
+For pod
+> kubectl run redis --image=redis123
+kubectl edit a pod will take effect immediately
+Kubectl get <resource> -o yaml; this will generate an existing running template for you
+kubectl scale rs new-replica-set --replicas=5 OR use edit
+> kubectl create deployment test --image=nginx --replicas=2
+> kubectl scale deployment test --replicas=3
+> kubectl get pods -n research (only show namespace research)
+In the same namespace, just use service name to access other pod
+The link: db-service.dev.svc.cluster.local (src.cluster.local) to access a pod in different name space you need to tell <service-name>.<namespace>.svc.cluster.local
+Expose a pod to a service = create a culsterIP service; the following only create the clusterIP service
+> kubectl expose pod/redis --port=6379 --name=redis-service (assume pod/redis is already exist) (after a cluster IP is created, it will auto add the newly created pod in [whenever the selector label is matched], the newly added pod will have a unique IP as the endpoint of the ClusterIP)
+
+The following will also expose to ClusterIP (it first created the pod then create a new clusterIP service)
+> kubectl run httpd --image=httpd:alpine --port=80 --expose 
+
+> kubectl get pods --selector env=dev --no-headers | wc -l (--selector key=value)
+kubectl get all --selector env=prod,bu=finance,tier=frontend (--selector key1=value1,key2=value2,key3=value3)
+> kubectl get nodes --show-labels
+
+
+For a node port service, port-forwarding may needed to let it to expose to external world
+> kubectl port-forward --address 0.0.0.0 service/svc-nginx 30200:80
+
+
+
+> kubectl taint nodes node01 spray=mortein:NoSchedule
+> kubectl taint nodes node01 key1=value1:NoSchedule-  (NoSchedule- is to remove)
+> kubectl label node node01 color=blue (label a node)
+
+Taint Option
+NoSchedule (not allow to schedule for new pod)
+PreferNoSchedule (Not allow schedule for new pod, but if no node accept, stil allow)
+NoExecute (not only not all for schedule new pod, but also no allow for existing running pod)
+
+
+Node Affinity, can:
+Base on the label to fit into the node
+
+Resource like CPU and memory are talking container wise
+
+Static pod name is added with "-controlplane" 
+Static pod yaml file stored in /etc/kubernetes/manifests/ (by default)
+You can create a yaml file and put it in /etc/kubernetes/manifests/ and the static pod will auto added (the following static pod is added to node01)
+Example: > kubectl run --restart=Never --image=busybox static-busybox --dry-run=client -o yaml --command -- sleep 1000 > /etc/kubernetes/manifests/static-busybox.yaml
+For static pod, you can't delete it by "kubectl delete pods xxx"
+You should deleted the yaml file stored in /etc/kubernetes/manifests (by default), 
+the yaml file may store in other path on a particular node
+Therefore to delete the static pod, you need to goto a particular node to remove the yaml file which stored static path 
+
+
+To install a package can download from GitHub then run yaml, example:
+> git clone https://github.com/kodekloudhub/kubernetes-metrics-server.git
+Goto the directory, then run
+> kubectl create -f .
+
+Log a pod just have a single container
+> kubectl logs webapp-1
+Log a pod with more than 1 container
+> kubectl logs webapp-2 -c simple-webapp
+> kubectl logs <pod-name> -c <container-name>
+
+
+Application Lifecycle Management
+Deployment strategy: "Recreate" or "RollingUpdate"
+
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Container with command
+---
+apiVersion: v1 
+kind: Pod 
+metadata:
+  name: ubuntu-sleeper-2 
+spec:
+  containers:
+  - name: ubuntu
+    image: ubuntu
+    command:
+      - "sleep"
+      - "5000"
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Docker File #1
+FROM python:3.6-alpine
+RUN pip install flask
+COPY . /opt/
+EXPOSE 8080
+WORKDIR /opt
+ENTRYPOINT ["python", "app.py"]
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Docker File #2
+FROM python:3.6-alpine
+RUN pip install flask
+COPY . /opt/
+EXPOSE 8080
+WORKDIR /opt
+ENTRYPOINT ["python", "app.py"]
+CMD ["--color", "red"]
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+root@controlplane:~/webapp-color-3# cat Dockerfile2 
+FROM python:3.6-alpine
+RUN pip install flask
+COPY . /opt/
+EXPOSE 8080
+WORKDIR /opt
+ENTRYPOINT ["python", "app.py"]
+CMD ["--color", "red"]
+
+root@controlplane:~/webapp-color-3# cat webapp-color-pod-2.yaml 
+apiVersion: v1 
+kind: Pod 
+metadata:
+  name: webapp-green
+  labels:
+      name: webapp-green 
+spec:
+  containers:
+  - name: simple-webapp
+    image: kodekloud/webapp-color
+    command: ["python", "app.py"]
+    args: ["--color", "pink"]
+
+
+### command in yaml = ENTRYPOINT in Dockerfile
+### args in yaml = CMD in dockerfile
+Therefore the above gives "python app.py --color pink
+If YAML miss the command, then k8s will use docker entry point
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Part of yaml for environment variable
+spec:
+  containers:
+  - env:
+    - name: APP_COLOR
+      value: pink
+    image: kodekloud/webapp-color
+
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+ConfigMap is used to set the environment var (eg. DB URL / User name / password)
+eg. DB_HOST: SQL01.example.com
+
+> kubectl get cm
+> kubectl get configmaps
+
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Part of yaml for environment variable by using config map
+spec:
+  containers:
+  - env:
+    - name: ANY_NAME              # Any name you like
+      valueFrom:
+        configMapKeyRef:
+          name: webapp-config-map # Name of the config map
+          key: APP_COLOR          # The key to fetch
+    image: kodekloud/webapp-color
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Secret
+> kubectl get secrets 
+
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+# the following is part of the yaml file which use the secret
+
+spec:
+  containers:
+    - name: test-container
+      image: k8s.gcr.io/busybox
+      command: [ "/bin/sh", "-c", "env" ]
+      envFrom:
+      - secretRef:
+          name: mysecret	# the name of the secret resource
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
