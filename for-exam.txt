@@ -1,3 +1,6 @@
+> kubectl expose pods/nginx --port=8090 --target-port=80 --name=ng-svc (you can goto other port to > kubectl exec pods/other-pod -- curl ng-svc:8090)
+
+
 kubectl expose pod redis --port=6379 --name redis-service
 
 This will expose "pod called redis" with "target port (pod port) 6379" 
