@@ -448,7 +448,7 @@ Weave Net creates a virtual network that connects Docker containers across multi
 Linux command use to calculate IP address, eg: 
 > ipcalc -b 192.16.0.1/24
 
-Cordons is the build in for accessing the service inside the cluster
+CoreDNS is the build in for accessing the service inside the cluster
 Use the service name as the domain name for accessing the pods
 eg. web-service (if it's in the same namespace) / 
     web-service.default (need to write if it's not in the same namespace) / 
