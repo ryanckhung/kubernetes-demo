@@ -1,0 +1,740 @@
+Core Concept -> Done (PODs, rs, deploy, namespace, svc, imperative) - completed (fluent)
+Scheduling -> Done (manual, label and selector, taint, affinity (very bad), resource, daemonset, multi-scheduler(skip)) (now fluent)
+Logging & Monitoring -> Done (fluent; mainly 3rd party yaml and logs)
+Application Lifecycle Management -> (Rolling, Cmd & Arg, Env, Secret, Multi, Init) (now fluent) (secret should try more)
+Cluster Maintenance -> Done (OS Upgrades[easy], Cluster upgrade) (easy; now fluent; but try to do more to memorise the steps)
+Security -> Done (View Cert, Cert API, kubeconfig, RBAC, Cluster Role, service account, image registry, security context, network policy) (should try more)
+Storage -> Done (PV, SC)(should try more)
+Networking -> Done (explore environment, CNI, Deploy Network Solution, Networking Weave, Service Networking, CoreDNS, ingress) (should try more)
+
+Installation -> (just following the flow in the document) [Not yet]
+
+
+
+kubectl run redis --image=redis:alpine --labels=tier=db
+
+kubectl run custom-nginx --image=nginx --port=8080 (refer to container port)
+
+kubectl run custom-nginx --image=nginx --port=8080 --expose (8080 refer to both port of the service and target port of the pod)
+
+Logging: (install the following git)
+> git clone https://github.com/kodekloudhub/kubernetes-metrics-server.git
+Then install all yaml
+Then > kubectl top node/pods
+
+Scheduling:
+If no scheduler and need a manual placement; use "nodeName:xxx" in yaml; add under spec in the container level: 
+(must read the doc clearly and see which level of the code should apply in)
+Suggest to use -dry-run -o yaml to generate the template then add the content under spec: in the container level
+> kubectl get pod --show-labels
+> kubectl get pod --selector=env=dev
+> kubectl get all --selector env=prod,bu=finance,tier=frontend
+> kubectl taint node node01 spray=mortein:NoSchedule
+> kubectl taint node controlplane node-role.kubernetes.io/master:NoSchedule-
+Node Affinity; assign based on the label
+> kubectl label nodes node01 color=blue
+Node Affinity is place in the same level as container (under spec: in the container level) (read doc)
+    spec:
+      containers:
+      - image: red
+        name: red
+      affinity:
+        nodeAffinity:
+> kubectl get daemonsets --all-namespaces
+Static pod: you just copy the file to the /etc/kubernetes/manifest/ (default path) then the pod will auto run
+Static pod name added with the node name eg. xxxx-controlplane, xxxx-node01        
+
+
+
+
+Application Life Cycle
+Update deployment image; it will auto trigger replacing the pod; because it's the job of the deployment; RollingUpdate/ReCreate
+Rolling just apply on changing image; but not apply to update the replica number
+Env variable can directly write into the pod yaml OR use config map
+Configmap:
+kubectl create configmap webapp-config-map --from-literal=APP_COLOR=darkblue
+Container link with envFrom:
+
+containers:
+    - name: test-container
+      image: k8s.gcr.io/busybox
+      command: [ "/bin/sh", "-c", "env" ]
+      envFrom:
+      - configMapRef:
+          name: special-config
+
+
+> kubectl get secrets
+> kubectl create secret generic db-secret --from-literal=DB_Host=sql01 --from-literal=DB_User=root --from-literal=DB_Password=password123
+Load secret also from envFrom:
+
+containers:
+    - name: test-container
+      image: k8s.gcr.io/busybox
+      command: [ "/bin/sh", "-c", "env" ]
+      envFrom:
+      - secretRef:
+          name: mysecret
+  restartPolicy: Never
+
+Volume Mount: (hostPath)
+
+  containers:
+  - name: sidecar
+    image: kodekloud/filebeat-configured
+    volumeMounts:
+    - mountPath: /var/log/event-simulator/
+      name: log-volume
+
+  volumes:
+  - name: log-volume
+    hostPath:
+      # directory location on host
+      path: /var/log/webapp
+      # this field is optional
+      type: DirectoryOrCreate
+
+
+Persistence Volume
+accessMode must match; k8s will auto map PV and PVC
+For a pod to use PVC, you don't need to care if it's SC or PV; you just mount to the PVC is ok
+
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-log
+spec:
+  capacity:
+    storage: 100Mi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /pv/log
+
+
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: claim-log-1
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Mi
+
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: webapp
+spec:
+  containers:
+    - name: kk-container
+      image: kodekloud/event-simulator
+      volumeMounts:
+      - mountPath: /log
+        name: data-volume
+  volumes:
+    - name: data-volume
+      persistentVolumeClaim:
+        claimName: claim-log-1
+
+
+
+# PVC - storage class 
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: local-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Mi
+  storageClassName: local-storage
+
+
+
+# you don't need to care where did the PVC map; it can be storage class or pv
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx
+  name: nginx
+spec:
+  containers:
+  - image: nginx:alpine
+    name: nginx
+    resources: {}
+    volumeMounts:
+      - mountPath: /var/www/html
+        name: data-volume
+  volumes:
+    - name: data-volume
+      persistentVolumeClaim:
+        claimName: local-pvc
+
+
+
+# storage class
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: delayed-volume-sc
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+
+
+
+
+
+Maintenance
+For pod without RS and you drain it forcefully, then it will loss forever; Use can use cordon instead of drain in this cases.
+Cordon will ensure that no new pods are scheduled on this node and the existing pods will not be affected by this operation.
+We usually drain the node, then cordon the node to prevent any new pod schedule in [common practice. -> drain -> cordon -> uncordon]
+Drain will not move out / delete the static pod; because static pod is bounded into a specific node
+Therefore with drain --daemonset, static pod and daemonset will still stay in the drained node (not all pod can be drain)
+Therefore to make it unschedulable, use cordon
+> kubeadm version
+> kubeadm upgrade plan
+> kubectl drain node --ignore-daemonset
+> kubectl cordon node
+# upgrade
+> apt update
+> apt install kubeadm=1.20.0-00 (beware not v1.20.0 but 1.20.0)
+> kubeadm upgrade apply v1.20.0
+> apt install kubelet=1.20.0-00
+> systemctl restart kubelet
+
+> ssh node01 (goto worker node and run the above code again)
+> apt update
+> apt install kubeadm=1.20.0-00
+> kubeadm upgrade node		(this is diff. from host, should be due to it should follow the host, therefore you can't specify the version in worker)
+> apt install kubelet=1.20.0-00
+> systemctl restart kubelet
+
+# check etcd server
+> kubectl describe pod etcd-controlplane -n kube-system (can check the version by reading image version)
+--listen-client-urls=https://127.0.0.1:2379,https://10.9.16.3:2379 (listen controlplane to connect to etcd)
+--cert-file=/etc/kubernetes/pki/etcd/server.crt  (the ETCD server certificate file located)
+--trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt  (ETCD CA Certificate file located)
+
+ETCDCTL_API=3 etcdctl --endpoints=https://[127.0.0.1]:2379 \
+--cacert=/etc/kubernetes/pki/etcd/ca.crt \
+--cert=/etc/kubernetes/pki/etcd/server.crt \
+--key=/etc/kubernetes/pki/etcd/server.key \
+snapshot save /opt/snapshot-pre-boot.db
+
+# the following is from the official doc
+ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
+  --cacert=<trusted-ca-file> --cert=<cert-file> --key=<key-file> \
+  snapshot save <backup-file-location>
+
+
+ETCDCTL_API=3 etcdctl  --data-dir /var/lib/etcd-from-backup \
+snapshot restore /opt/snapshot-pre-boot.db
+
+# the following is the official doc
+ETCDCTL_API=3 etcdctl --data-dir <data-dir-location> snapshot restore snapshotdb
+
+Etcd is a static pod, you need to update the pod by editing:
+/etc/kubernetes/mainifests/etcd.yaml
+When the file updated, the static pod also updated
+In the above we store the db and store in /var/lib/etcd-from-backup
+Therefore we need to edit the etcd.yaml to update the mount volume
+
+
+
+
+
+
+Security
+Checking the content of the cert
+> openssl x509 -in /etc/kubernetes/pki/apiserver.crt -text
+The Common Name (AKA CN) represents the server name protected by the SSL certificate. 
+subject alternative name is a structured way to indicate all of the domain names and IP addresses that are secured by the certificate. 
+Cert(.crt) and Key(.key) + CA Cert(.crt) [cert is authorised public key and key is private key]
+
+If kubectl has problem, it means the kube apiserver can't access
+You can check the docker by
+> docker ps -a | grep -i kube-apiserver (find the apiserver docker)
+> docker logs <container-id> --tail=2
+
+
+If you would like to obtain an SSL certificate from a commercial certificate authority (CA), you must generate a certificate signing request (CSR). 
+A CSR consists mainly of the public key, and some additional information. Both of these components are inserted into the certificate when it is signed.
+If we want our certificate signed, we need a certificate signing request (CSR). The CSR includes the public key and some additional information (such as organization and country).
+.csr = certificate signing request
+The CA will use the data from the CSR to build your SSL Certificate. The key pieces of information include the following.
+
+(Example: https://www.baeldung.com/openssl-self-signed-cert)
+# Step 1: create private key and CSR
+> openssl req -key domain.key -new -out domain.csr (create csr from an existing private key)
+> openssl req -newkey rsa:2048 -keyout domain.key -out domain.csr (create both of the key and csr)
+# Step 2: signed the CSR (this example is a self signed example)
+> openssl x509 -signkey domain.key -in domain.csr -req -days 365 -out domain.crt
+> openssl req -key domain.key -new -x509 -days 365 -out domain.crt
+
+# one more real example
+# Step 1: (create the key and csr[inclue public key and general info])
+> openssl req -newkey rsa:2048 -keyout ryan.key -out ryan.csr (create private key and csr)
+# Step 2: (sign the csr and generate the crt [a self signed cert])
+> openssl x509 -signkey ryan.key -in ryan.csr -req -days 365 -out ryan.crt [use my private key (self signed key) to sign csr to form crt]
+# Step 3: (verify the signed cert)
+> openssl x509 -in ryan.crt -text 
+
+
+# K8s use CertificateSigningRequest to sign the request
+# the request content is getting by > cat akshay.csr | base64 | tr -d "\n"
+---
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: akshay
+spec:
+  groups:
+  - system:authenticated
+  request: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ1ZqQ0NBVDRDQVFBd0VURVBNQTBHQTFVRUF3d0dZV3R6YUdGNU1JSUJJakFOQmdrcWhraUc5dzBCQVFFRgpBQU9DQVE4QU1JSUJDZ0tDQVFFQXY4azZTTE9HVzcrV3JwUUhITnI2TGFROTJhVmQ1blNLajR6UEhsNUlJYVdlCmJ4RU9JYkNmRkhKKzlIOE1RaS9hbCswcEkwR2xpYnlmTXozL2lGSWF3eGVXNFA3bDJjK1g0L0lqOXZQVC9jU3UKMDAya2ZvV0xUUkpQbWtKaVVuQTRpSGxZNDdmYkpQZDhIRGFuWHM3bnFoenVvTnZLbWhwL2twZUVvaHd5MFRVMAo5bzdvcjJWb1hWZTVyUnNoMms4dzV2TlVPL3BBdEk4VkRydUhCYzRxaHM3MDI1ZTZTUXFDeHUyOHNhTDh1blJQCkR6V2ZsNVpLcTVpdlJNeFQrcUo0UGpBL2pHV2d6QVliL1hDQXRrRVJyNlMwak9XaEw1Q0ErVU1BQmd5a1c5emQKTmlXbnJZUEdqVWh1WjZBeWJ1VzMxMjRqdlFvbndRRUprNEdoayt2SU53SURBUUFCb0FBd0RRWUpLb1pJaHZjTgpBUUVMQlFBRGdnRUJBQi94dDZ2d2EweWZHZFpKZ1k2ZDRUZEFtN2ZiTHRqUE15OHByTi9WZEdxN25oVDNUUE5zCjEwRFFaVGN6T21hTjVTZmpTaVAvaDRZQzQ0QjhFMll5Szg4Z2lDaUVEWDNlaDFYZnB3bnlJMVBDVE1mYys3cWUKMkJZTGJWSitRY040MDU4YituK24wMy9oVkN4L1VRRFhvc2w4Z2hOaHhGck9zRUtuVExiWHRsK29jQ0RtN3I3UwpUYTFkbWtFWCtWUnFJYXFGSDd1dDJveHgxcHdCdnJEeGUvV2cybXNqdHJZUXJ3eDJmQnErQ2Z1dm1sVS9rME4rCml3MEFjbVJsMy9veTdqR3ptMXdqdTJvNG4zSDNKQ25SbE41SnIyQkZTcFVQU3dCL1lUZ1ZobHVMNmwwRERxS3MKNTdYcEYxcjZWdmJmbTRldkhDNnJCSnNiZmI2ZU1KejZPMUU9Ci0tLS0tRU5EIENFUlRJRklDQVRFIFJFUVVFU1QtLS0tLQo=
+  signerName: kubernetes.io/kube-apiserver-client
+  usages:
+  - client auth
+
+> kubectl certificate approve akshay
+> kubectl certificate deny agent-smith
+> kubectl delete csr agent-smith
+
+
+kubeconfig (mapping between cluster, user by context)
+~/.kube/config
+> cat ~/.kube/config
+> kubectl config view (is the same as cat ~/.kube/config)
+> kubectl config current-context (if no --kubeconfig provide, it use ~/.kube/config)
+> kubectl config --kubeconfig=/root/my-kube-config use-context research
+> kubectl config --kubeconfig=/root/my-kube-config current-context
+> kubectl config --kubeconfig=/root/my-kube-config view
+
+
+Talking about access mode, is talking about API-server
+Because it is the centre of K8s
+> kubectl get roles
+> kubectl describe rolebinding kube-proxy -n kube-system
+> kubectl get pods --as dev-user (this means run "kubectl get pods" by user dev-user; if it's deny, it means dev-user don't have permission to get pods)
+
+
+> kubectl create role developer --namespace=default --verb=list,create,delete --resource=pods
+> kubectl create rolebinding dev-user-binding --namespace=default --role=developer --user=dev-user
+> kubectl edit role developer --namespace=blue (when you save, it will exe immediately)(if you just use edit and without provide the namespace, and edit the namespace of this file; it will generate error; please try "> kubectl edit role developer", then edit the namespace to "blue" then save; you will find an error prompt)
+
+
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: blue
+  name: deploy-role
+rules:
+- apiGroups: ["apps", "extensions"]
+  resources: ["deployments"]
+  verbs: ["create"]
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: dev-user-deploy-binding
+  namespace: blue
+subjects:
+- kind: User
+  name: dev-user
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: deploy-role
+  apiGroup: rbac.authorization.k8s.io
+
+
+Cluster role is not bound to any namespace
+> kubectl get clusterrole 
+> kubectl get clusterrolebindings
+
+> kubectl api-resources (Get the API groups and resource names from command)
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: storage-admin
+rules:
+- apiGroups: [""]
+  resources: ["persistentvolumes"]
+  verbs: ["get", "watch", "list", "create", "delete"]
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses"]
+  verbs: ["get", "watch", "list", "create", "delete"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: michelle-storage-admin
+subjects:
+- kind: User
+  name: michelle
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: storage-admin
+  apiGroup: rbac.authorization.k8s.io
+
+
+
+
+Service Account
+> kubectl get serviceaccounts
+> kubectl create serviceaccount dashboard-sa (it will auto generate a serviceaccount & secrets)
+> kubectl describe serviceaccount dashboard-sa (you can see that the token is auto generated)
+> kubectl describe secrets <token-name> (the token name is get from the above command; the secret is auto generated when you create the service account)
+Role -> Rolebinding -> bind the service account to the rolebinding (role describe the permission, rolebind bind the permission and the service account)
+in the yaml file; add serviceAccountName:
+
+spec:
+      serviceAccountName: dashboard-sa
+      containers:
+      - image: gcr.io/kodekloud/customimage/my-kubernetes-dashboard
+        imagePullPolicy: Always
+
+
+Image Security (assume you have created a private registry and put your image there)
+> kubectl create secret --help
+> kubectl create secret docker-registry private-reg-cred --docker-username=dock_user --docker-password=dock_password --docker-server=myprivateregistry.com:5000 --docker-email=dock_user@myprivateregistry.com
+from official document
+kubectl create secret docker-registry regcred --docker-server=<your-registry-server> --docker-username=<your-name> --docker-password=<your-pword> --docker-email=<your-email>
+Update the deployment with a private image and imagePullSecrets
+from document pull an image from a private registry
+apiVersion: v1
+kind: Pod
+metadata:
+  name: private-reg
+spec:
+  containers:
+  - name: private-reg-container
+    image: <your-private-image>
+  imagePullSecrets:
+  - name: regcred
+
+
+
+
+
+Security Context
+> kubectl exec ubuntu-sleeper -- whoami
+
+beware the following 2 yaml files, the scope of security context
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ubuntu-sleeper
+  namespace: default
+spec:
+  securityContext:
+    runAsUser: 1010
+  containers:
+  - command:
+    - sleep
+    - "4800"
+    image: ubuntu
+    name: ubuntu-sleeper
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multi-pod
+spec:
+  securityContext:
+    runAsUser: 1001
+  containers:
+  -  image: ubuntu
+     name: web
+     command: ["sleep", "5000"]
+     securityContext:
+      runAsUser: 1002
+
+  -  image: ubuntu
+     name: sidecar
+     command: ["sleep", "5000"]
+
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ubuntu-sleeper
+  namespace: default
+spec:
+  containers:
+  - command:
+    - sleep
+    - "4800"
+    image: ubuntu
+    name: ubuntu-sleeper
+    securityContext:
+      capabilities:
+        add: ["SYS_TIME"]
+
+
+
+
+
+Network Policy
+> kubectl get networkpolicies
+
+---
+spec:
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          name: internal
+    ports:
+    - port: 8080
+      protocol: TCP
+  podSelector:
+    matchLabels:
+      name: payroll
+  policyTypes:
+  - Ingress
+
+---
+Description
+
+Spec:
+  PodSelector:     name=payroll
+  Allowing ingress traffic:
+    To Port: 8080/TCP
+    From:
+      PodSelector: name=internal
+  Not affecting egress traffic
+  Policy Types: Ingress
+
+
+# Create a network policy to allow traffic from the 
+# Internal application only to the payroll-service and db-service.
+Policy Name: internal-policy
+Policy Type: Egress
+Egress Allow: payroll
+Payroll Port: 8080
+Egress Allow: mysql
+MySQL Port: 3306
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: internal-policy
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      name: internal
+  policyTypes:
+  - Egress
+  - Ingress
+  ingress:
+    - {}
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          name: mysql
+    ports:
+    - protocol: TCP
+      port: 3306
+
+  - to:
+    - podSelector:
+        matchLabels:
+          name: payroll
+    ports:
+    - protocol: TCP
+      port: 8080
+
+
+
+
+
+Networking
+> arp node01 (check MAC address; refer to externally routable)
+> route (check through with gateway)
+> netstat -nplt (check pod use with port and ip)
+2379 is the port of ETCD to which all control plane components connect to. 2380 is only for etcd peer-to-peer connectivity. 
+ExternalIP: Typically the IP address of the node that is externally routable (available from outside the cluster).
+InternalIP: Typically the IP address of the node that is routable only within the cluster.
+> ps -aux | grep -i kubelet | grep network (check network plugin)
+The CNI binaries are located under /opt/cni/bin by default.
+Run the command: ls /etc/cni/net.d/ and identify the name of the plugin.
+
+Install Weave-Net
+> kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')&env.IPALLOC_RANGE=10.50.0.0/16"
+
+Check which CNI using by:
+1. /etc/cni/net.d/ OR
+2. kubectl get pods -A. (Check the pod name)
+
+CNI pod should be install in all node inside the cluster
+
+> ip route
+
+There are "Node Level IP address", "Cluster Level IP Address" and "Service Level IP address"
+> cat /etc/kubernetes/manifests/kube-apiserver.yaml | grep service-cluster-ip-range (you can use yaml file to check the setup, this check for service)
+Service will embedded with different Pods. Service serve a single IP for accessing multiple pods (just like a Load Balancer)
+
+Where is the configuration file located for configuring the CoreDNS service?
+Use > kubectl describe <pod-name> (to check for the pod details)
+Access a pod by DNS -> <svc-name>.<namespace>.svc.cluster.local (we usually won't type svc.cluster.local)
+> kubectl exec hr -- nslookup mysql.payroll > /root/CKA/nslookup.out (goto a pod and check the service IP)
+
+
+# Ingress in networking is talking about redirect the url /path to the corresponding services and port
+> kubectl get ingress -A
+# If the requirement does not match any of the configured paths what service are the requests forwarded to?
+# there is a "Default backend" info inside the "> kubectl describe ingress <ingress-name>"
+# ingress redirect the /path to a services
+# ingress is depends on namespace
+
+# the following is talking about /pay url will send the service pay-service with port 8282
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /pay
+        pathType: Prefix
+        backend:
+          service:
+            name: pay-service
+            port:
+              number: 8282
+
+
+
+> kubectl create configmap nginx-configuration --namespace ingress-space
+
+
+
+In vi show the line number - "escape", ":", "set number"
+
+
+
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-wear-watch
+  namespace: app-space
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /wear
+        pathType: Prefix
+        backend:
+          service:
+           name: wear-service
+           port: 
+            number: 8080
+      - path: /watch
+        pathType: Prefix
+        backend:
+          service:
+           name: video-service
+           port:
+            number: 8080
+
+
+
+
+
+
+# Installation
+https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
+> kubelet --version
+After the installation, you need to bootstrap kubernetes cluster using kubeadm
+> kubeadm init --apiserver-cert-extra-sans=controlplane --apiserver-advertise-address 10.2.223.3 --pod-network-cidr=10.244.0.0/16
+After "kubeadm" copy the .kube
+root@controlplane:~# mkdir -p $HOME/.kube
+root@controlplane:~# sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+root@controlplane:~# sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+
+
+
+
+Mock Questions:
+Use JSON PATH query to retrieve the osImages of all the nodes and store it in a file /opt/outputs/nodes_os_x43kj56.txt.
+The osImages are under the nodeInfo section under status of each node.
+Ans: kubectl get nodes -o jsonpath='{.items[*].status.nodeInfo.osImage}' > /opt/outputs/nodes_os_x43kj56.txt
+[try > kubectl get nodes -o json (to check the json format)]
+
+
+Create a new user called john. Grant him access to the cluster. John should have permission to create, list, get, update and delete pods in the development namespace . The private key exists in the location: /root/CKA/john.key and csr at /root/CKA/john.csr.
+1. Create CSR (by yaml)
+2. Sign the CSR by > kubectl certificate approve john
+3. Create role and role binding 
+> kubectl create role johnrole --verb=get,list,create,update,delete --resource=pods --namespace=development
+> kubectl create rolebinding johnrolebind --role=johnrole --user=john --namespace=development
+> kubectl get pods --namespace=development --as john
+
+
+---
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: john-developer
+spec:
+  signerName: kubernetes.io/kube-apiserver-client
+  request: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ1ZEQ0NBVHdDQVFBd0R6RU5NQXNHQTFVRUF3d0VhbTlvYmpDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRApnZ0VQQURDQ0FRb0NnZ0VCQUt2Um1tQ0h2ZjBrTHNldlF3aWVKSzcrVVdRck04ZGtkdzkyYUJTdG1uUVNhMGFPCjV3c3cwbVZyNkNjcEJFRmVreHk5NUVydkgyTHhqQTNiSHVsTVVub2ZkUU9rbjYra1NNY2o3TzdWYlBld2k2OEIKa3JoM2prRFNuZGFvV1NPWXBKOFg1WUZ5c2ZvNUpxby82YU92czFGcEc3bm5SMG1JYWpySTlNVVFEdTVncGw4bgpjakY0TG4vQ3NEb3o3QXNadEgwcVpwc0dXYVpURTBKOWNrQmswZWhiV2tMeDJUK3pEYzlmaDVIMjZsSE4zbHM4CktiSlRuSnY3WDFsNndCeTN5WUFUSXRNclpUR28wZ2c1QS9uREZ4SXdHcXNlMTdLZDRaa1k3RDJIZ3R4UytkMEMKMTNBeHNVdzQyWVZ6ZzhkYXJzVGRMZzcxQ2NaanRxdS9YSmlyQmxVQ0F3RUFBYUFBTUEwR0NTcUdTSWIzRFFFQgpDd1VBQTRJQkFRQ1VKTnNMelBKczB2czlGTTVpUzJ0akMyaVYvdXptcmwxTGNUTStsbXpSODNsS09uL0NoMTZlClNLNHplRlFtbGF0c0hCOGZBU2ZhQnRaOUJ2UnVlMUZnbHk1b2VuTk5LaW9FMnc3TUx1a0oyODBWRWFxUjN2SSsKNzRiNnduNkhYclJsYVhaM25VMTFQVTlsT3RBSGxQeDNYVWpCVk5QaGhlUlBmR3p3TTRselZuQW5mNm96bEtxSgpvT3RORStlZ2FYWDdvc3BvZmdWZWVqc25Yd0RjZ05pSFFTbDgzSkljUCtjOVBHMDJtNyt0NmpJU3VoRllTVjZtCmlqblNucHBKZWhFUGxPMkFNcmJzU0VpaFB1N294Wm9iZDFtdWF4bWtVa0NoSzZLeGV0RjVEdWhRMi80NEMvSDIKOWk1bnpMMlRST3RndGRJZjAveUF5N05COHlOY3FPR0QKLS0tLS1FTkQgQ0VSVElGSUNBVEUgUkVRVUVTVC0tLS0tCg==
+  usages:
+  - digital signature
+  - key encipherment
+  - client auth
+  groups:
+  - system:authenticated
+
+
+Create a nginx pod called nginx-resolver using image nginx, expose it internally with a service called nginx-resolver-service. Test that you are able to look up the service and pod names from within the cluster. Use the image: busybox:1.28 for dns lookup. Record results in /root/CKA/nginx.svc and /root/CKA/nginx.pod
+
+kubectl run nginx-resolver --image=nginx
+kubectl expose pod nginx-resolver --name=nginx-resolver-service --port=80 --target-port=80 --type=ClusterIP
+
+kubectl run test-nslookup --image=busybox:1.28 --rm -it --restart=Never -- nslookup nginx-resolver-service
+kubectl run test-nslookup --image=busybox:1.28 --rm -it --restart=Never -- nslookup nginx-resolver-service > /root/CKA/nginx.svc
+
+kubectl get pod nginx-resolver -o wide
+kubectl run test-nslookup --image=busybox:1.28 --rm -it --restart=Never -- nslookup <P-O-D-I-P.default.pod> > /root/CKA/nginx.pod
+
+
+
+Create a static pod on node01 called nginx-critical with image nginx and make sure that it is recreated/restarted automatically in case of a failure.
+> kubectl run nginx-critical --image=nginx --dry-run=client -o yaml > static.yaml
+> root@controlplane:~# scp static.yaml node01:/root/
+
+
+
+  
+
+
+
+
