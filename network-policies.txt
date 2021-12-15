@@ -1,0 +1,37 @@
+kubectl create namespace ns01
+kubectl create namespace ns02
+kubectl create namespace ns03
+kubectl run nginx01 --image=nginx --namespace=ns01
+kubectl run nginx02 --image=nginx --namespace=ns02
+kubectl run nginx03 --image=nginx --namespace=ns03
+# check IP (please use service in partical way)
+kubectl describe pod nginx01 --namespace=ns01 (this example is 10.244.1.6)
+kubectl describe pod nginx02 --namespace=ns02 (this example is 10.244.1.7)
+kubectl describe pod nginx03 --namespace=ns03 (this example is 10.244.1.8)
+# try to communicate with others
+kubectl exec nginx01 --namespace=ns01 -- curl 10.244.1.8
+# add label for the namespace
+kubectl label namespaces ns01 ns=ns01
+kubectl label namespaces ns02 ns=ns02
+kubectl label namespaces ns03 ns=ns03
+
+Now try to only allow Pods from ns03 to access ns01 pod
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: net-policy
+  namespace: ns01
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          ns: ns03
+      #podSelector: {} <- remove this line will make everything work; this will also all pod to access again
+    ports:
+    - protocol: TCP
+      port: 80
